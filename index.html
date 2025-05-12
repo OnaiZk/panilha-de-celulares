@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Linhas Telefônicas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .type-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .modal {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .modal-hidden {
+            opacity: 0;
+            transform: translateY(-20px);
+            pointer-events: none;
+            display: none;
+        }
+        .modal-visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            display: flex;
+        }
+        /* Adicionado para rolagem nos modais */
+        .modal-content {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        /* Estilo personalizado para a barra de rolagem */
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .modal-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Modal de Edição (inicialmente oculto) -->
+        <div id="editModal" class="modal modal-hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+                <div class="p-6 modal-content">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Editar Linha Telefônica</h3>
+                    <form id="editForm">
+                        <input type="hidden" id="editId">
+                        <div class="mb-4">
+                            <label for="editNumber" class="block text-sm font-medium text-gray-700 mb-1">Número</label>
+                            <input type="text" id="editNumber" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="mb-4">
+                            <label for="editType" class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                            <select id="editType" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="Normal">Normal</option>
+                                <option value="Business">Business</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="editStatus" class="block text-sm font-medium text-gray-700 mb-1">Situação</label>
+                            <select id="editStatus" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="Ativo">Ativo</option>
+                                <option value="Banido">Banido</option>
+                                <option value="Livre">Livre</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="editOperator" class="block text-sm font-medium text-gray-700 mb-1">Operador</label>
+                            <input type="text" id="editOperator" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="mb-4">
+                            <label for="editWallet" class="block text-sm font-medium text-gray-700 mb-1">Carteira</label>
+                            <input type="text" id="editWallet" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="mb-4">
+                            <label for="editPrevOperator" class="block text-sm font-medium text-gray-700 mb-1">Operador Anterior</label>
+                            <input type="text" id="editPrevOperator" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="mb-4">
+                            <label for="editObservation" class="block text-sm font-medium text-gray-700 mb-1">Observação</label>
+                            <input type="text" id="editObservation" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </form>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="saveEdit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        Salvar
+                    </button>
+                    <button type="button" id="cancelEdit" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Adição (inicialmente oculto) -->
+        <div id="addModal" class="modal modal-hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+                <div class="p-6 modal-content">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Adicionar Nova Linha</h3>
+                    <form id="addForm">
+                        <div class="mb-4">
+                            <label for="addNumber" class="block text-sm font-medium text-gray-700 mb-1">Número</label>
+                            <input type="text" id="addNumber" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="addType" class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                            <select id="addType" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                                <option value="Normal">Normal</option>
+                                <option value="Business">Business</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="addStatus" class="block text-sm font-medium text-gray-700 mb-1">Situação</label>
+                            <select id="addStatus" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                                <option value="Ativo">Ativo</option>
+                                <option value="Banido">Banido</option>
+                                <option value="Livre">Livre</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="addOperator" class="block text-sm font-medium text-gray-700 mb-1">Operador</label>
+                            <input type="text" id="addOperator" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="addWallet" class="block text-sm font-medium text-gray-700 mb-1">Carteira</label>
+                            <input type="text" id="addWallet" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="addPrevOperator" class="block text-sm font-medium text-gray-700 mb-1">Operador Anterior</label>
+                            <input type="text" id="addPrevOperator" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="mb-4">
+                            <label for="addObservation" class="block text-sm font-medium text-gray-700 mb-1">Observação</label>
+                            <input type="text" id="addObservation" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </form>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="saveAdd" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        Adicionar
+                    </button>
+                    <button type="button" id="cancelAdd" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteúdo principal -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Gestão de Linhas Telefônicas</h1>
+            <p class="text-gray-600">Controle e monitoramento das linhas ativas e banidas</p>
+            
+            <div class="mt-6 flex flex-wrap gap-4">
+                <div class="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[200px]">
+                    <h3 class="text-gray-500 text-sm font-medium">Total de Linhas</h3>
+                    <p class="text-2xl font-bold text-blue-600" id="totalLines">46</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[200px]">
+                    <h3 class="text-gray-500 text-sm font-medium">Linhas Ativas</h3>
+                    <p class="text-2xl font-bold text-green-600" id="activeLines">44</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[200px]">
+                    <h3 class="text-gray-500 text-sm font-medium">Linhas Banidas</h3>
+                    <p class="text-2xl font-bold text-red-600" id="bannedLines">2</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[200px]">
+                    <h3 class="text-gray-500 text-sm font-medium">Tipos de Linhas</h3>
+                    <p class="text-2xl font-bold text-yellow-600">2</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="mb-6 flex flex-wrap justify-between items-center gap-4">
+            <div class="relative w-full md:w-auto">
+                <input type="text" placeholder="Buscar por número, operador..." 
+                       class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full md:w-64">
+                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+            </div>
+            
+            <div class="flex gap-2 w-full md:w-auto">
+                <button id="addLineBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Adicionar Linha
+                </button>
+                <button class="bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="overflow-x-auto scrollbar-hide">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Situação</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operador</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Carteira</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Operador Anterior</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observação</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="tableBody">
+                        <!-- Linha 1 -->
+                        <tr class="hover:bg-gray-50 transition fade-in" data-id="1">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">1</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1198078-2145</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="type-badge bg-blue-100 text-blue-800">Normal</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="status-badge bg-green-100 text-green-800">Ativo</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">RAFAELA</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">ANIMA</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">WEB</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button class="edit-btn text-blue-600 hover:text-blue-700 mr-2"><i class="fas fa-edit"></i></button>
+                                <button class="delete-btn text-red-600 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                        
+                        <!-- Linha 2 -->
+                        <tr class="hover:bg-gray-50 transition fade-in" data-id="2">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">2</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1196016-4961</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="type-badge bg-purple-100 text-purple-800">Business</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="status-badge bg-green-100 text-green-800">Ativo</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">MARIA EDUARDA</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">DIGITAL/plat</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">PLATAFORMA</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button class="edit-btn text-blue-600 hover:text-blue-700 mr-2"><i class="fas fa-edit"></i></button>
+                                <button class="delete-btn text-red-600 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                        
+                        <!-- Linha 3 (com operador anterior) -->
+                        <tr class="hover:bg-gray-50 transition fade-in" data-id="3">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">3</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1196034-7913</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="type-badge bg-purple-100 text-purple-800">Business</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="status-badge bg-green-100 text-green-800">Ativo</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">FELIPE</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">OMNI</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span class="bg-yellow-50 text-yellow-800 px-2 py-1 rounded text-xs">PAULO HENRIQUE VASCONCELOS DE SOUZA</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">WEB</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button class="edit-btn text-blue-600 hover:text-blue-700 mr-2"><i class="fas fa-edit"></i></button>
+                                <button class="delete-btn text-red-600 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                        
+                        <!-- Linha banida -->
+                        <tr class="hover:bg-gray-50 transition fade-in" data-id="4">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">13</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1196810-6740</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="type-badge bg-blue-100 text-blue-800">Normal</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="status-badge bg-red-100 text-red-800">Banido</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">AMANDA</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">MERCADO PAGO</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">web</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button class="edit-btn text-blue-600 hover:text-blue-700 mr-2"><i class="fas fa-edit"></i></button>
+                                <button class="delete-btn text-red-600 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                        
+                        <!-- Linha livre -->
+                        <tr class="hover:bg-gray-50 transition fade-in" data-id="5">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">21</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1196510-2054</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="type-badge bg-blue-100 text-blue-800">Normal</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="status-badge bg-gray-100 text-gray-800">Livre</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">LIVRE</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">LIVRE</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">LIVRE</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button class="edit-btn text-blue-600 hover:text-blue-700 mr-2"><i class="fas fa-edit"></i></button>
+                                <button class="delete-btn text-red-600 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="bg-gray-50 px-6 py-3 flex items-center justify-between border-t border-gray-200">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"> Anterior </a>
+                    <a href="#" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"> Próximo </a>
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Mostrando
+                            <span class="font-medium">1</span>
+                            a
+                            <span class="font-medium">5</span>
+                            de
+                            <span class="font-medium">46</span>
+                            resultados
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Anterior</span>
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                            <a href="#" aria-current="page" class="z-10 bg-blue-600 border-blue-500 text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium">1</a>
+                            <a href="#" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">2</a>
+                            <a href="#" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">3</a>
+                            <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Próximo</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Funções para manipulação dos modais
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elementos dos modais
+            const addModal = document.getElementById('addModal');
+            const editModal = document.getElementById('editModal');
+            const addLineBtn = document.getElementById('addLineBtn');
+            const cancelAdd = document.getElementById('cancelAdd');
+            const cancelEdit = document.getElementById('cancelEdit');
+            const saveAdd = document.getElementById('saveAdd');
+            const saveEdit = document.getElementById('saveEdit');
+            const tableBody = document.getElementById('tableBody');
+            
+            // Abrir modal de adição
+            addLineBtn.addEventListener('click', function() {
+                addModal.classList.remove('modal-hidden');
+                addModal.classList.add('modal-visible');
+                document.getElementById('addForm').reset();
+            });
+            
+            // Fechar modal de adição
+            cancelAdd.addEventListener('click', function() {
+                addModal.classList.remove('modal-visible');
+                addModal.classList.add('modal-hidden');
+            });
+            
+            // Fechar modal de edição
+            cancelEdit.addEventListener('click', function() {
+                editModal.classList.remove('modal-visible');
+                editModal.classList.add('modal-hidden');
+            });
+            
+            // Adicionar nova linha
+            saveAdd.addEventListener('click', function() {
+                const addNumber = document.getElementById('addNumber').value;
+                const addType = document.getElementById('addType').value;
+                const addStatus = document.getElementById('addStatus').value;
+                const addOperator = document.getElementById('addOperator').value;
+                const addWallet = document.getElementById('addWallet').value;
+                const addPrevOperator = document.getElementById('addPrevOperator').value;
+                const addObservation = document.getElementById('addObservation').value;
+                
+                if (!addNumber || !addOperator || !addWallet) {
+                    alert('Por favor, preencha todos os campos obrigatórios!');
+                    return;
+                }
+                
+                // Criar nova linha na tabela
+                const newRow = document.createElement('tr');
+                newRow.className = 'hover:bg-gray-50 transition fade-in';
+                newRow.dataset.id = Date.now(); // ID único
+                
+                // Determinar classes CSS para tipo e status
+                const typeClass = addType === 'Business' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800';
+                let statusClass = '';
+                if (addStatus === 'Ativo') statusClass = 'bg-green-100 text-green-800';
+                else if (addStatus === 'Banido') statusClass = 'bg-red-100 text-red-800';
+                else statusClass = 'bg-gray-100 text-gray-800';
+                
+                newRow.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${newRow.dataset.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${addNumber}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="type-badge ${typeClass}">${addType}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="status-badge ${statusClass}">${addStatus}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${addOperator}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${addWallet}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${addPrevOperator || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${addObservation || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="edit-btn text-blue-600 hover:text-blue-700 mr-2"><i class="fas fa-edit"></i></button>
+                        <button class="delete-btn text-red-600 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                
+                // Adicionar a nova linha no início da tabela
+                tableBody.insertBefore(newRow, tableBody.firstChild);
+                
+                // Atualizar contadores
+                updateCounters();
+                
+                // Fechar modal e limpar formulário
+                addModal.classList.remove('modal-visible');
+                addModal.classList.add('modal-hidden');
+                document.getElementById('addForm').reset();
+                
+                // Adicionar eventos aos novos botões
+                addRowEvents(newRow);
+            });
+            
+            // Editar linha existente
+            saveEdit.addEventListener('click', function() {
+                const editId = document.getElementById('editId').value;
+                const editNumber = document.getElementById('editNumber').value;
+                const editType = document.getElementById('editType').value;
+                const editStatus = document.getElementById('editStatus').value;
+                const editOperator = document.getElementById('editOperator').value;
+                const editWallet = document.getElementById('editWallet').value;
+                const editPrevOperator = document.getElementById('editPrevOperator').value;
+                const editObservation = document.getElementById('editObservation').value;
+                
+                if (!editNumber || !editOperator || !editWallet) {
+                    alert('Por favor, preencha todos os campos obrigatórios!');
+                    return;
+                }
+                
+                // Encontrar a linha a ser editada
+                const rowToEdit = document.querySelector(`tr[data-id="${editId}"]`);
+                if (rowToEdit) {
+                    // Determinar classes CSS para tipo e status
+                    const typeClass = editType === 'Business' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800';
+                    let statusClass = '';
+                    if (editStatus === 'Ativo') statusClass = 'bg-green-100 text-green-800';
+                    else if (editStatus === 'Banido') statusClass = 'bg-red-100 text-red-800';
+                    else statusClass = 'bg-gray-100 text-gray-800';
+                    
+                    // Atualizar os dados da linha
+                    rowToEdit.cells[1].textContent = editNumber;
+                    rowToEdit.cells[2].innerHTML = `<span class="type-badge ${typeClass}">${editType}</span>`;
+                    rowToEdit.cells[3].innerHTML = `<span class="status-badge ${statusClass}">${editStatus}</span>`;
+                    rowToEdit.cells[4].textContent = editOperator;
+                    rowToEdit.cells[5].textContent = editWallet;
+                    rowToEdit.cells[6].textContent = editPrevOperator || '-';
+                    rowToEdit.cells[7].textContent = editObservation || '-';
+                    
+                    // Atualizar contadores
+                    updateCounters();
+                    
+                    // Fechar modal
+                    editModal.classList.remove('modal-visible');
+                    editModal.classList.add('modal-hidden');
+                }
+            });
+            
+            // Adicionar eventos aos botões de edição e exclusão
+            function addRowEvents(row) {
+                const editBtn = row.querySelector('.edit-btn');
+                const deleteBtn = row.querySelector('.delete-btn');
+                
+                editBtn.addEventListener('click', function() {
+                    const rowId = row.dataset.id;
+                    const cells = row.cells;
+                    
+                    // Preencher o modal de edição com os dados da linha
+                    document.getElementById('editId').value = rowId;
+                    document.getElementById('editNumber').value = cells[1].textContent;
+                    document.getElementById('editType').value = cells[2].textContent.trim();
+                    document.getElementById('editStatus').value = cells[3].textContent.trim();
+                    document.getElementById('editOperator').value = cells[4].textContent;
+                    document.getElementById('editWallet').value = cells[5].textContent;
+                    document.getElementById('editPrevOperator').value = cells[6].textContent === '-' ? '' : cells[6].textContent;
+                    document.getElementById('editObservation').value = cells[7].textContent === '-' ? '' : cells[7].textContent;
+                    
+                    // Abrir modal de edição
+                    editModal.classList.remove('modal-hidden');
+                    editModal.classList.add('modal-visible');
+                });
+                
+                deleteBtn.addEventListener('click', function() {
+                    if (confirm('Tem certeza que deseja excluir esta linha?')) {
+                        row.remove();
+                        updateCounters();
+                    }
+                });
+            }
+            
+            // Adicionar eventos às linhas existentes
+            document.querySelectorAll('#tableBody tr').forEach(row => {
+                addRowEvents(row);
+            });
+            
+            // Atualizar contadores
+            function updateCounters() {
+                const rows = document.querySelectorAll('#tableBody tr');
+                const totalLines = rows.length;
+                const activeLines = Array.from(rows).filter(row => 
+                    row.cells[3].textContent.trim() === 'Ativo'
+                ).length;
+                const bannedLines = Array.from(rows).filter(row => 
+                    row.cells[3].textContent.trim() === 'Banido'
+                ).length;
+                
+                document.getElementById('totalLines').textContent = totalLines;
+                document.getElementById('activeLines').textContent = activeLines;
+                document.getElementById('bannedLines').textContent = bannedLines;
+            }
+            
+            // Fechar modais ao clicar fora
+            window.addEventListener('click', function(event) {
+                if (event.target === addModal) {
+                    addModal.classList.remove('modal-visible');
+                    addModal.classList.add('modal-hidden');
+                }
+                if (event.target === editModal) {
+                    editModal.classList.remove('modal-visible');
+                    editModal.classList.add('modal-hidden');
+                }
+            });
+        });
+    </script>
+<p style="border-radius: 8px; text-align: center; font-size: 12px; color: #fff; margin-top: 16px;position: fixed; left: 8px; bottom: 8px; z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 4px 8px;">Made with <img src="https://enzostvs-deepsite.hf.space/logo.svg" alt="DeepSite Logo" style="width: 16px; height: 16px; vertical-align: middle;display:inline-block;margin-right:3px;filter:brightness(0) invert(1);"><a href="https://enzostvs-deepsite.hf.space" style="color: #fff;text-decoration: underline;" target="_blank" >DeepSite</a> - 🧬 <a href="https://enzostvs-deepsite.hf.space?remix=onaizk/planilha-de-celulares" style="color: #fff;text-decoration: underline;" target="_blank" >Remix</a></p></body>
+</html>
